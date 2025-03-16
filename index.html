@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发送邮件</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .email-form {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        .api-key-section {
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .api-key-status {
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .api-key-saved {
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-form">
+        <div class="api-key-section">
+            <h2>API设置</h2>
+            <div class="form-group">
+                <label for="apiKey">Resend API密钥:</label>
+                <input type="password" id="apiKey" name="apiKey" required placeholder="请输入您的API密钥">
+                <div id="apiKeyStatus" class="api-key-status"></div>
+            </div>
+            <button id="saveApiKey">保存API密钥</button>
+        </div>
+
+        <h2>发送邮件</h2>
+        <form id="emailForm">
+            <div class="form-group">
+                <label for="from">发件人:</label>
+                <input type="text" id="from" name="from" required placeholder="名称 <email@example.com>">
+            </div>
+            <div class="form-group">
+                <label for="to">收件人:</label>
+                <input type="email" id="to" name="to" required placeholder="email@example.com">
+            </div>
+            <div class="form-group">
+                <label for="subject">主题:</label>
+                <input type="text" id="subject" name="subject" required>
+            </div>
+            <div class="form-group">
+                <label for="content">内容:</label>
+                <textarea id="content" name="content" rows="6" required></textarea>
+            </div>
+            <button type="submit">发送邮件</button>
+        </form>
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        // 检查是否已保存API密钥
+        const savedApiKey = localStorage.getItem('resendApiKey');
+        const apiKeyInput = document.getElementById('apiKey');
+        const apiKeyStatus = document.getElementById('apiKeyStatus');
+
+        if (savedApiKey) {
+            apiKeyInput.value = savedApiKey;
+            apiKeyStatus.textContent = '已保存API密钥';
+            apiKeyStatus.className = 'api-key-status api-key-saved';
+        }
+
+        // 保存API密钥
+        document.getElementById('saveApiKey').addEventListener('click', () => {
+            const apiKey = apiKeyInput.value.trim();
+            if (apiKey) {
+                localStorage.setItem('resendApiKey', apiKey);
+                apiKeyStatus.textContent = '已保存API密钥';
+                apiKeyStatus.className = 'api-key-status api-key-saved';
+            } else {
+                apiKeyStatus.textContent = '请输入API密钥';
+                apiKeyStatus.className = 'api-key-status error';
+            }
+        });
+
+        document.getElementById('emailForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const apiKey = apiKeyInput.value.trim();
+            if (!apiKey) {
+                alert('请先输入API密钥');
+                return;
+            }
+
+            const form = e.target;
+            const statusDiv = document.getElementById('status');
+            
+            const data = {
+                apiKey: apiKey,
+                from: form.from.value,
+                to: [form.to.value],
+                subject: form.subject.value,
+                html: `<p>${form.content.value}</p>`
+            };
+
+            try {
+                // 获取当前页面的协议和主机名
+                const apiUrl = `${window.location.protocol}//${window.location.host}/send-email`;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                statusDiv.style.display = 'block';
+                if (result.success) {
+                    statusDiv.className = 'status success';
+                    statusDiv.textContent = result.message;
+                    form.reset();
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.textContent = `发送失败: ${result.message}`;
+                }
+            } catch (error) {
+                statusDiv.style.display = 'block';
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `发送失败: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html> 
